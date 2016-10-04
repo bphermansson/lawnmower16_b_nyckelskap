@@ -52,7 +52,7 @@ float r1 = 1000000;  // "Top" resistor, 1Mohm.
 float r2 = 470000;   // "Bottom" resistor (to ground), 470 kohm.
 
 // Status
-String status="";
+String cstatus="";
 
 void setup() {
   pinMode(enR,OUTPUT);
@@ -87,30 +87,38 @@ void loop() {
   while (Serial.available() > 0) {
       int command = Serial.parseInt();
       Serial.println("Got serial data");
+      // Handle commands from the app
       // look for the newline. That's the end of your sentence:
       if (Serial.read() == '\r') {
         Serial.print("Got: ");
         Serial.println(command);
         if (command==1) {
           Serial.print ("Run!");
-          status="forward";
+          cstatus="forward";
         }
         else if (command==2) {
           Serial.print ("Stop!");     
-          status="stop";     
+          cstatus="stop";     
+        }
+        else if (command==3) {
+          // Start cuttermotor
+          Serial.println("Start cutter motor");
+          cutterControl("start");
+        }
+        else if (command==4) {
+          // Stop cuttermotor
+          Serial.println("Stop cutter motor");
+          cutterControl("stop");
         }
       }
   }
 
-  // Check status
-  if (status == "forward") {
+  // Check cstatus
+  if (cstatus == "forward") {
     forward();
   }
-  else if (status == "stop") {
-    digitalWrite(inaR, LOW); // Stop
-    digitalWrite(inbR, LOW);
-    digitalWrite(inaL, LOW);
-    digitalWrite(inbL, LOW);
+  else if (cstatus == "stop") {
+    motorStop();
   }
 
   
@@ -121,7 +129,13 @@ void loop() {
     // save the last time 
     previousMillis3000 = currentMillis;
     float battv = checkBatt();
-
+    if (battv < 95){
+      // Low battery
+      cstatus="stop";
+      digitalWrite(errorLed, HIGH);
+    }
+    
+    // Tell the world about the measurements
     Serial.println("1000mS");
     Serial.print("Battery: ");
     Serial.print(battv/10);
@@ -145,9 +159,23 @@ void loop() {
     
     // Distance
     dist = distance();
+    if (dist <=10) {
+      turnAround();
+    }
     // Check current
     checkCurrent();
     
+  }
+}
+
+void cutterControl(String whattodo) {
+  if(whattodo=="start") {
+    digitalWrite (cutRun, HIGH);
+    digitalWrite (cutPwm, HIGH);
+  }
+  else if (whattodo=="stop"){
+    digitalWrite (cutRun, LOW);
+    digitalWrite (cutPwm, LOW);
   }
 }
 
@@ -160,6 +188,31 @@ void forward() {
     digitalWrite(inaL, HIGH); // Rotate Cw
     digitalWrite(inbL, LOW);
     digitalWrite(enL, HIGH);
+}
+
+void motorStop() {
+    digitalWrite(inaR, LOW); // Stop
+    digitalWrite(inbR, LOW);
+    digitalWrite(inaL, LOW);
+    digitalWrite(inbL, LOW);
+}
+
+void turnAround() {
+    motorStop();
+    delay(400);
+    // Turn
+    analogWrite(pwmR, 100); // Set speed
+    analogWrite(pwmL, 100); // Set speed
+    digitalWrite(inaR,LOW); // Rotate Ccw
+    digitalWrite(inbR, HIGH);
+    digitalWrite(enR, HIGH);
+    digitalWrite(inaL, HIGH); // Rotate Cw
+    digitalWrite(inbL, LOW);
+    digitalWrite(enL, HIGH);
+    delay(2000);
+    motorStop();
+    delay(400);
+    
 }
 
 int checkCurrent() {
