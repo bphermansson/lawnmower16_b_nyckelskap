@@ -84,6 +84,9 @@ void setup() {
 
 void loop() {
   // if there's any serial available, read it:
+
+// Maybe send longer commands? Like 'S140' for setting the speed to 140?
+  
   while (Serial.available() > 0) {
       int command = Serial.parseInt();
       Serial.println("Got serial data");
@@ -115,7 +118,7 @@ void loop() {
 
   // Check cstatus
   if (cstatus == "forward") {
-    forward();
+    forward(100);
   }
   else if (cstatus == "stop") {
     motorStop();
@@ -132,6 +135,7 @@ void loop() {
     if (battv < 95){
       // Low battery
       cstatus="stop";
+      cutterControl("stop");
       digitalWrite(errorLed, HIGH);
     }
     
@@ -164,7 +168,13 @@ void loop() {
     }
     // Check current
     checkCurrent();
-    
+    /* The motor drivers are modules based on VNH2SP30
+     *   "Maximum current rating: 30 A, Practical Continuous Current: 14 A"
+     *   "For the VNH2SP30 version, the current sense (CS) pin will output 
+     *   approximately 0.13 volts per amp of output current."
+     * The motors are ZGB37RG 
+     * Rated current 0.92A. At max efficiency 1.32A. 
+     */
   }
 }
 
@@ -179,9 +189,9 @@ void cutterControl(String whattodo) {
   }
 }
 
-void forward() {
-    analogWrite(pwmR, 100); // Set speed
-    analogWrite(pwmL, 100); // Set speed
+void forward(int speed) {
+    analogWrite(pwmR, speed); // Set speed
+    analogWrite(pwmL, speed); // Set speed
     digitalWrite(inaR,HIGH); // Rotate Cw
     digitalWrite(inbR, LOW);
     digitalWrite(enR, HIGH);
