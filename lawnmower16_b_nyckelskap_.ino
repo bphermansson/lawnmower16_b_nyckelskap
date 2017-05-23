@@ -1,6 +1,5 @@
 // Fault indicator led
 #define errorLed A4
-
 // Connections for motor driver cards
 // Motor driver R
 #define enR 2
